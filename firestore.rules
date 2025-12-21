@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isTeacher() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    function isStudent() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+    
+    // Users collection - Anyone authenticated can read their own data
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if false; // No one can delete users
+    }
+    
+    // Active sessions (QR tokens)
+    match /activeSessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow write: if isTeacher();
+      allow delete: if isTeacher();
+    }
+    
+    // Attendance records
+    match /attendance/{recordId} {
+      allow read: if isAuthenticated();
+      allow create: if isStudent();
+      allow update, delete: if isTeacher();
+    }
+    
+    // Failed attempts
+    match /failedAttempts/{attemptId} {
+      allow read: if isTeacher();
+      allow create: if isAuthenticated();
+      allow delete: if isTeacher();
+    }
+    
+    // Security alerts
+    match /securityAlerts/{alertId} {
+      allow read: if isTeacher();
+      allow write: if false; // Only cloud functions
+    }
+    
+    // Attendance analysis
+    match /attendanceAnalysis/{analysisId} {
+      allow read: if isTeacher();
+      allow write: if false; // Only cloud functions
+    }
+  }
+}
