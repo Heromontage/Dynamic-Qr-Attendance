@@ -21,26 +21,37 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
 
-// Connect to emulators in development
-if (window.location.hostname === 'localhost') {
+// Detect if running on local network
+const hostname = window.location.hostname;
+const isLocalNetwork = hostname.startsWith('192.168.') || 
+                       hostname.startsWith('10.') || 
+                       hostname.startsWith('172.') ||
+                       hostname === 'localhost';
+
+// Connect to emulators
+if (isLocalNetwork) {
   console.log('🔧 Connecting to Firebase Emulators...');
+  console.log('🌐 Host:', hostname);
+  
+  // Use the actual hostname for emulator connections
+  const emulatorHost = hostname === 'localhost' ? 'localhost' : hostname;
   
   try {
-    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+    connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
     console.log('✅ Auth Emulator connected');
   } catch (error) {
     console.log('Auth emulator already connected');
   }
   
   try {
-    connectFirestoreEmulator(db, 'localhost', 8080);
+    connectFirestoreEmulator(db, emulatorHost, 8080);
     console.log('✅ Firestore Emulator connected');
   } catch (error) {
     console.log('Firestore emulator already connected');
   }
   
   try {
-    connectFunctionsEmulator(functions, 'localhost', 5001);
+    connectFunctionsEmulator(functions, emulatorHost, 5001);
     console.log('✅ Functions Emulator connected');
   } catch (error) {
     console.log('Functions emulator already connected');
